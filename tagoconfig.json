@@ -20,11 +20,6 @@
                 "id": "65d652b2f6a78100097c5f3e"
             },
             {
-                "fileName": "clear-buckets.ts",
-                "name": "[TagoIO] - Clear Buckets",
-                "id": "6609a3e292efdf00097e8c2a"
-            },
-            {
                 "fileName": "data-retention.ts",
                 "name": "[TagoIO] - Data Retention Updater",
                 "id": "65d652b0ac58b700109ec8ac"

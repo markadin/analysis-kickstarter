@@ -129,7 +129,7 @@ async function sensorAdd({ context, scope, environment }: RouterConstructorData)
   const dash_id = await getDashboardByTagID("cabinet_dashboard");
 
   const dash_info = await Resources.dashboards.info(dash_id);
-  const type = dash_info.blueprint_devices.find((bp) => bp.conditions[0].key === "asset");
+  const type = dash_info.blueprint_devices.find((bp) => bp.conditions[0].key === "sensor");
   if (!type) {
     return validate("#VAL.ERROR__DASHBOARD_IS_MISSING_THE_BLUEPRINT_DEVICE_SENSOR#", "danger");
   }
@@ -172,7 +172,7 @@ async function sensorAdd({ context, scope, environment }: RouterConstructorData)
   await Resources.devices.paramSet(device_id, { key: "dev_group", value: (new_dev_group?.metadata?.label as string) || "", sent: false });
   await Resources.devices.paramSet(device_id, { key: "dev_lastcheckin", value: "-", sent: false });
   await Resources.devices.paramSet(device_id, { key: "dev_battery", value: "-", sent: false });
-  await Resources.devices.paramSet(device_id, { key: "dev_location", value: (new_asset_address?.metadata?.label as string) || "", sent: false });
+  await Resources.devices.paramSet(device_id, { key: "asset_address", value: (new_asset_address?.value as string) || "N/A", sent: false });
 
   const add_to_dropdown_list = parseTagoObject({ asset_list: new_dev_name.value }, device_id);
   await Resources.devices.sendDeviceData(org_id, dev_data.concat(add_to_dropdown_list));

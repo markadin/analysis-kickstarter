@@ -16,6 +16,7 @@ interface installDeviceParam {
   new_device_eui: string;
   type: string;
   group_id?: string;
+  new_asset_address: string;
 }
 
 /**
@@ -29,7 +30,7 @@ interface installDeviceParam {
  * @param group_id Group id that devices will be created
  * @param new_asset_address location of the device, coordinates
  */
-async function installDevice({ new_dev_name, org_id, network_id, connector, new_device_eui, type, group_id}: installDeviceParam) {
+async function installDevice({ new_dev_name, org_id, network_id, connector, new_asset_address, type, group_id }: installDeviceParam) {
   //data retention set to 1 month
   const device_data: DeviceCreateInfo = {
     name: new_dev_name,
@@ -51,6 +52,7 @@ async function installDevice({ new_dev_name, org_id, network_id, connector, new_
       { key: "device_type", value: "device" },
       { key: "sensor", value: type },
       { key: "dev_eui", value: new_device_eui },
+	
     ],
   };
 
@@ -88,8 +90,8 @@ async function sensorAdd({ context, scope, environment }: RouterConstructorData)
     ],
   });
 
-  if (sensor_qty.length >= 50) {
-    return validate("#VAL.LIMIT_OF_50_DEVICES_REACHED#", "danger");
+  if (sensor_qty.length >= 5) {
+    return validate("#VAL.LIMIT_OF_5_DEVICES_REACHED#", "danger");
   }
   //Collecting data
   const new_dev_name = scope.find((x) => x.variable === "new_dev_name");
@@ -97,9 +99,9 @@ async function sensorAdd({ context, scope, environment }: RouterConstructorData)
   const new_dev_group = scope.find((x) => x.variable === "new_dev_group");
   const new_dev_type = scope.find((x) => x.variable === "new_dev_type");
   const new_dev_network = scope.find((x) => x.variable === "new_dev_network");
-  
+  const new_asset_address = scope.find((x) => x.variable === "asset_address");
 
-  if (!new_dev_name || !new_dev_group || !new_dev_type || !new_dev_network ) {
+  if (!new_dev_name || !new_dev_group || !new_dev_type || !new_dev_network || !new_asset_address) {
     throw new Error("Missing variables");
   }
   if ((new_dev_name?.value as string).length < 3) {
@@ -134,6 +136,7 @@ async function sensorAdd({ context, scope, environment }: RouterConstructorData)
 
   const { device_id } = await installDevice({
     new_dev_name: new_dev_name.value as string,
+    new_asset_address: new_asset_address.value as string,
     org_id,
     network_id: new_dev_network.value as string,
     connector: connector_id,

@@ -30,7 +30,7 @@ interface installDeviceParam {
  * @param group_id Group id that devices will be created
  * @param new_asset_address location of the device, coordinates
  */
-async function installDevice({ new_dev_name, org_id, network_id, connector, new_asset_address, type, group_id }: installDeviceParam) {
+async function installDevice({ new_dev_name, org_id, network_id, connector, type, group_id, new_asset_address }: installDeviceParam) {
   //data retention set to 1 month
   const device_data: DeviceCreateInfo = {
     name: new_dev_name,
@@ -136,13 +136,13 @@ async function sensorAdd({ context, scope, environment }: RouterConstructorData)
 
   const { device_id } = await installDevice({
     new_dev_name: new_dev_name.value as string,
-    new_asset_address: new_asset_address.value as string,
     org_id,
     network_id: new_dev_network.value as string,
     connector: connector_id,
     new_device_eui: dev_eui,
     type: type.conditions[0].value,
     group_id,
+    new_asset_address: new_asset_address.value as string,
   });
 
   const url = createDashURL(dash_id, { org_dev: org_id, sensor: device_id });

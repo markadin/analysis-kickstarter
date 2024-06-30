@@ -10,6 +10,7 @@ import { DeviceCreated, RouterConstructorData } from "../../types";
 
 interface installDeviceParam {
   new_dev_name: string;
+  new_ioguard_serial: string;
   org_id: string;
   network_id: string;
   connector: string;
@@ -25,11 +26,11 @@ interface installDeviceParam {
  * @param network_id Network id that devices will be created
  * @param connector Connector id that devices will be created
  * @param new_device_eui Device eui configured by the user
+ * @param new_ioguard_serial IOguard serial number
  * @param type Sensor type of the device
  * @param group_id Group id that devices will be created
- * @param new_asset_address location of the device, coordinates
  */
-async function installDevice({ new_dev_name, org_id, network_id, connector, new_device_eui, type, group_id}: installDeviceParam) {
+async function installDevice({ new_dev_name, new_ioguard_serial, org_id, network_id, connector, new_device_eui, type, group_id }: installDeviceParam) {
   //data retention set to 1 month
   const device_data: DeviceCreateInfo = {
     name: new_dev_name,
@@ -46,7 +47,8 @@ async function installDevice({ new_dev_name, org_id, network_id, connector, new_
 
   const new_tags = {
     tags: [
-      { key: "device_id", value: new_dev.device_id },
+      { key: "ioguard_id", value: new_dev.device_id },
+      { key: "ioguard_serial", value: new_ioguard_serial},
       { key: "organization_id", value: org_id },
       { key: "device_type", value: "device" },
       { key: "sensor", value: type },
@@ -71,7 +73,7 @@ async function installDevice({ new_dev_name, org_id, network_id, connector, new_
  * @param scope Number of devices that will be listed
  * @param environment Environment Variable is a resource to send variables values to the context of your script
  */
-async function sensorAdd({ context, scope, environment }: RouterConstructorData) {
+async function ioguardAdd({ context, scope, environment }: RouterConstructorData) {
   if (!environment || !scope || !context) {
     throw new Error("Missing parameters");
   }
@@ -93,13 +95,13 @@ async function sensorAdd({ context, scope, environment }: RouterConstructorData)
   }
   //Collecting data
   const new_dev_name = scope.find((x) => x.variable === "new_dev_name");
+  const new_ioguard_serial = scope.find((x) => x.variable === "new_ioguard_serial");
   const new_dev_eui = scope.find((x) => x.variable === "new_dev_eui");
   const new_dev_group = scope.find((x) => x.variable === "new_dev_group");
   const new_dev_type = scope.find((x) => x.variable === "new_dev_type");
   const new_dev_network = scope.find((x) => x.variable === "new_dev_network");
-  
 
-  if (!new_dev_name || !new_dev_group || !new_dev_type || !new_dev_network ) {
+  if (!new_dev_name || !new_dev_group || !new_dev_type || !new_dev_network || !new_ioguard_serial) {
     throw new Error("Missing variables");
   }
   if ((new_dev_name?.value as string).length < 3) {
@@ -116,24 +118,25 @@ async function sensorAdd({ context, scope, environment }: RouterConstructorData)
   const dev_exists = await fetchDeviceList({ tags: [{ key: "dev_eui", value: dev_eui }] });
 
   if (dev_exists.length > 0) {
-    console.debug("Sensor EUI already in use.");
-    return validate("Sensor EUI already in use.", "danger");
+    console.debug("IOguard EUI already in use.");
+    return validate("IOguard EUI already in use.", "danger");
   }
 
   const group_id = new_dev_group?.value as string;
 
   const connector_id = new_dev_type.value as string;
 
-  const dash_id = await getDashboardByTagID("cabinet_dashboard");
+  const dash_id = await getDashboardByTagID("ioguard_dashboard");
 
   const dash_info = await Resources.dashboards.info(dash_id);
-  const type = dash_info.blueprint_devices.find((bp) => bp.conditions[0].key === "asset");
+  const type = dash_info.blueprint_devices.find((bp) => bp.conditions[0].key === "sensor");
   if (!type) {
     return validate("#VAL.ERROR__DASHBOARD_IS_MISSING_THE_BLUEPRINT_DEVICE_SENSOR#", "danger");
   }
 
   const { device_id } = await installDevice({
     new_dev_name: new_dev_name.value as string,
+    new_ioguard_serial: new_ioguard_serial.value as string,
     org_id,
     network_id: new_dev_network.value as string,
     connector: connector_id,
@@ -180,4 +183,4 @@ async function sensorAdd({ context, scope, environment }: RouterConstructorData)
   return validate("#VAL.DEVICE_CREATED_SUCCESSFULLY#", "success");
 }
 
-export { sensorAdd };
+export { ioguardAdd };

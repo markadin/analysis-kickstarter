@@ -34,6 +34,10 @@ import { reportDel } from "../services/reports/remove";
 import { userEdit } from "../services/user/edit";
 import { userAdd } from "../services/user/register";
 import { userDel } from "../services/user/remove";
+import { ioguardEdit } from "../services/ioguard/edit";
+import { ioguardPlacement } from "../services/ioguard/place-sensor";
+import { ioguardAdd } from "../services/ioguard/register";
+import { ioguardDel } from "../services/ioguard/remove";
 
 // import { createAlert } from "../services/alerts/register";
 // import { deleteAlert } from "../services/alerts/remove";
@@ -78,6 +82,14 @@ async function startAnalysis(context: TagoContext, scope: Data[]): Promise<void>
 
   // Sensor uplink routing
   router.register(sensorPlacement).whenVariables(["set_dev_pin_id"]);
+
+    // Ioguard routing
+    router.register(ioguardAdd).whenInputFormID("create-ioguard");
+    router.register(ioguardDel).whenDeviceListIdentifier("delete-ioguard");
+    router.register(ioguardEdit).whenDeviceListIdentifier("edit-ioguard");
+  
+    // ioguard uplink routing
+    router.register(ioguardPlacement).whenVariables(["set_ioguard_pin_id"]);
 
   // group routing
   router.register(groupAdd).whenInputFormID("create-group");

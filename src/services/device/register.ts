@@ -30,7 +30,7 @@ interface installDeviceParam {
  * @param group_id Group id that devices will be created
  * @param new_asset_address location of the device, coordinates
  */
-async function installDevice({ new_dev_name, org_id, network_id, connector, type, group_id, new_asset_address }: installDeviceParam) {
+async function installDevice({ new_dev_name, org_id, network_id, connector, type, group_id, new_device_eui, new_asset_address }: installDeviceParam) {
   //data retention set to 1 month
   const device_data: DeviceCreateInfo = {
     name: new_dev_name,
@@ -90,8 +90,8 @@ async function sensorAdd({ context, scope, environment }: RouterConstructorData)
     ],
   });
 
-  if (sensor_qty.length >= 5) {
-    return validate("#VAL.LIMIT_OF_5_DEVICES_REACHED#", "danger");
+  if (sensor_qty.length >= 100) {
+    return validate("#VAL.LIMIT_OF_100_DEVICES_REACHED#", "danger");
   }
   //Collecting data
   const new_dev_name = scope.find((x) => x.variable === "new_dev_name");
@@ -172,6 +172,7 @@ async function sensorAdd({ context, scope, environment }: RouterConstructorData)
   await Resources.devices.paramSet(device_id, { key: "dev_group", value: (new_dev_group?.metadata?.label as string) || "", sent: false });
   await Resources.devices.paramSet(device_id, { key: "dev_lastcheckin", value: "-", sent: false });
   await Resources.devices.paramSet(device_id, { key: "dev_battery", value: "-", sent: false });
+  await Resources.devices.paramSet(device_id, { key: "dev_location", value: (new_asset_address?.metadata?.label as string) || "", sent: false });
 
   const add_to_dropdown_list = parseTagoObject({ asset_list: new_dev_name.value }, device_id);
   await Resources.devices.sendDeviceData(org_id, dev_data.concat(add_to_dropdown_list));

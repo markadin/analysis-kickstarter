@@ -151,11 +151,13 @@ async function sensorAdd({ context, scope, environment }: RouterConstructorData)
     {
       dev_id: {
         value: device_id,
+        location: new_asset_address?.location,
         metadata: {
           label: new_dev_name.value,
           url,
           status: "unknwon",
           type: dash_info.type,
+          location: new_asset_address?.location
         },
       },
     },
@@ -185,3 +187,4 @@ async function sensorAdd({ context, scope, environment }: RouterConstructorData)
 }
 
 export { sensorAdd };
+

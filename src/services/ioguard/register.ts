@@ -30,7 +30,7 @@ interface installDeviceParam {
  * @param type Sensor type of the device
  * @param group_id Group id that devices will be created
  */
-async function installDevice({ new_dev_name, new_ioguard_serial, org_id, network_id, connector, new_device_eui, type, group_id }: installDeviceParam) {
+async function installDevice({ new_dev_name, new_ioguard_serial, org_id, network_id, connector, new_device_eui, type, group_id}: installDeviceParam) {
   //data retention set to 1 month
   const device_data: DeviceCreateInfo = {
     name: new_dev_name,
@@ -100,6 +100,8 @@ async function ioguardAdd({ context, scope, environment }: RouterConstructorData
   const new_dev_group = scope.find((x) => x.variable === "new_dev_group");
   const new_dev_type = scope.find((x) => x.variable === "new_dev_type");
   const new_dev_network = scope.find((x) => x.variable === "new_dev_network");
+  const new_paired_asset_id = scope.find((x) => x.variable === "paired_asset_id");
+  const paired_asset_id = new_paired_asset_id?.value as string;
 
   if (!new_dev_name || !new_dev_group || !new_dev_type || !new_dev_network || !new_ioguard_serial) {
     throw new Error("Missing variables");
@@ -145,6 +147,16 @@ async function ioguardAdd({ context, scope, environment }: RouterConstructorData
     group_id,
   });
 
+  //Update the paired asset (cabinet) with the ioguard info
+  const {tags: cabinet_tags} = await Resources.devices.info(paired_asset_id);
+  //Add new device tago id to the cabinet tags
+  cabinet_tags.find((x) => x.key === "paired_ioguard_id").value = device_id;
+  //Update the cabinet tag to show the sensor is installed
+  cabinet_tags.find((x) => x.key === "has_ioguard").value = "true";
+  //Update cabinet tags
+  await Resources.devices.edit(paired_asset_id, {tags: cabinet_tags});
+
+
   const url = createDashURL(dash_id, { org_dev: org_id, sensor: device_id });
 
   const dev_data = parseTagoObject(
@@ -172,6 +184,9 @@ async function ioguardAdd({ context, scope, environment }: RouterConstructorData
   await Resources.devices.paramSet(device_id, { key: "dev_group", value: (new_dev_group?.metadata?.label as string) || "", sent: false });
   await Resources.devices.paramSet(device_id, { key: "dev_lastcheckin", value: "-", sent: false });
   await Resources.devices.paramSet(device_id, { key: "dev_battery", value: "-", sent: false });
+
+
+
 
   const add_to_dropdown_list = parseTagoObject({ asset_list: new_dev_name.value }, device_id);
   await Resources.devices.sendDeviceData(org_id, dev_data.concat(add_to_dropdown_list));

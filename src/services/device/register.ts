@@ -52,7 +52,9 @@ async function installDevice({ new_dev_name, org_id, network_id, connector, type
       { key: "device_type", value: "device" },
       { key: "sensor", value: type },
       { key: "dev_eui", value: new_device_eui },
-	
+      { key: "cabinet_serial", value: new_dev_name },
+      { key: "has_ioguard", value: "false"},
+      { key: "paired_ioguard_id", value: "0"},
     ],
   };
 
@@ -163,6 +165,8 @@ async function sensorAdd({ context, scope, environment }: RouterConstructorData)
     },
     device_id
   );
+
+  
 
   await Resources.devices.paramSet(device_id, {
     key: "dashboard_url",

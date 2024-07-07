@@ -1,6 +1,8 @@
 import { Device, Resources } from "@tago-io/sdk";
 import { DeviceCreateInfo } from "@tago-io/sdk/lib/types";
 
+import axios from "axios";
+
 import { createDashURL } from "../../lib/create-dash-url";
 import { parseTagoObject } from "../../lib/data.logic";
 import { fetchDeviceList } from "../../lib/fetch-device-list";
@@ -18,6 +20,48 @@ interface installDeviceParam {
   type: string;
   group_id?: string;
 }
+
+/**
+ * Simple parser for parsing MMD serials and DevEUI serials
+ * @param str Input csv string
+ * @output array of arrays
+ */
+function parseCSV(str) {
+  const arr = [];
+  let quote = false;  // 'true' means we're inside a quoted field
+
+  // Iterate over each character, keep track of current row and column (of the returned array)
+  for (let row = 0, col = 0, c = 0; c < str.length; c++) {
+      let cc = str[c], nc = str[c+1];        // Current character, next character
+      arr[row] = arr[row] || [];             // Create a new row if necessary
+      arr[row][col] = arr[row][col] || '';   // Create a new column (start with empty string) if necessary
+
+      // If the current character is a quotation mark, and we're inside a
+      // quoted field, and the next character is also a quotation mark,
+      // add a quotation mark to the current column and skip the next character
+      if (cc == '"' && quote && nc == '"') { arr[row][col] += cc; ++c; continue; }
+
+      // If it's just one quotation mark, begin/end quoted field
+      if (cc == '"') { quote = !quote; continue; }
+
+      // If it's a comma and we're not in a quoted field, move on to the next column
+      if (cc == ',' && !quote) { ++col; continue; }
+
+      // If it's a newline (CRLF) and we're not in a quoted field, skip the next character
+      // and move on to the next row and move to column 0 of that new row
+      if (cc == '\r' && nc == '\n' && !quote) { ++row; col = 0; ++c; continue; }
+
+      // If it's a newline (LF or CR) and we're not in a quoted field,
+      // move on to the next row and move to column 0 of that new row
+      if (cc == '\n' && !quote) { ++row; col = 0; continue; }
+      if (cc == '\r' && !quote) { ++row; col = 0; continue; }
+
+      // Otherwise, append the current character to the current column
+      arr[row][col] += cc;
+  }
+  return arr;
+}
+
 
 /**
  * Function that create devices
@@ -107,15 +151,43 @@ async function ioguardAdd({ context, scope, environment }: RouterConstructorData
     throw new Error("Missing variables");
   }
   if ((new_dev_name?.value as string).length < 3) {
-    throw validate("#VAL.NAME_FIELD_IS_SMALLER_THAN_3_CHAR#", "danger");
+    return validate("#VAL.NAME_FIELD_IS_SMALLER_THAN_3_CHAR#", "danger");
   }
 
   if (!new_dev_type?.value) {
-    throw validate("#VAL.DEVICE_TYPE_NOT_FOUND_PLEASE_SELECT_AGAIN_THE_DEVICE_TYPE#", "danger");
+    return validate("#VAL.DEVICE_TYPE_NOT_FOUND_PLEASE_SELECT_AGAIN_THE_DEVICE_TYPE#", "danger");
   }
 
-  //If choosing for the simulator, we generate a random EUI
-  const dev_eui = (new_dev_eui?.value as string)?.toUpperCase() || String(Math.ceil(Math.random() * 10_000_000));
+  if (!new_ioguard_serial?.value) {
+    return validate("#VAL.DEVICE_SERIAL_NOT_FOUND_PLEASE_ENTER_THE_DEVICE_SERIAL#", "danger");
+  }
+
+  let dev_eui = (new_dev_eui?.value as string)?.toLowerCase();
+  //If DevEUI was no provided in the input form, check if there is one in the csv file uploaded to Tago
+  //Import serial numbers table from csv file, add csv file url as environment variable serial_csv
+  if(!dev_eui){
+    const csvSerialFileUrl = environment.serial_csv;
+    if (!csvSerialFileUrl) {
+      return validate("#VAL.PLEASE_PROVIDE_CSV_CONTAINING_SERIAL_NUMBERS_URL_IN_ENVIRONMENT", "danger");
+    }
+    const csv = await axios.get(csvSerialFileUrl).then((res) => res.data).catch((e) => {
+      throw console.log(e.message);
+    });
+    //import csv to array
+    const ioguard_serials_table = parseCSV(csv);
+    //find the position of DevEUI in the csv file (usually 0, it's the first in the csv)
+    const eui_array_position = ioguard_serials_table[0].indexOf("DevEUI");
+    //find the element containing the new device ioguard serial:
+    const serial_found_index = ioguard_serials_table.findIndex(t => { return t.find(i => i === new_ioguard_serial.value)});
+    console.log(serial_found_index);
+    if(serial_found_index > 0){ 
+      dev_eui = ioguard_serials_table[serial_found_index][eui_array_position]?.toLowerCase();
+    }
+  }
+  if (!dev_eui) {
+    return validate("#VAL.DEVICE_EUI_NOT_FOUND_PLEASE_SELECT_IT_MANUALLY_OR_UPDATE_CSV_FILE#", "danger");
+  }
+  
 
   const dev_exists = await fetchDeviceList({ tags: [{ key: "dev_eui", value: dev_eui }] });
 

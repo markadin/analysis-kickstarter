@@ -1,6 +1,8 @@
 import { Device, Resources } from "@tago-io/sdk";
 import { DeviceCreateInfo } from "@tago-io/sdk/lib/types";
 
+
+
 import { createDashURL } from "../../lib/create-dash-url";
 import { parseTagoObject } from "../../lib/data.logic";
 import { fetchDeviceList } from "../../lib/fetch-device-list";
@@ -107,7 +109,7 @@ async function sensorAdd({ context, scope, environment }: RouterConstructorData)
     throw new Error("Missing variables");
   }
   if ((new_dev_name?.value as string).length < 3) {
-    throw validate("#VAL.NAME_FIELD_IS_SMALLER_THAN_3_CHAR#", "danger");
+    return validate("#VAL.NAME_FIELD_IS_SMALLER_THAN_3_CHAR#", "danger");
   }
 
   if (!new_dev_type?.value) {
@@ -179,6 +181,7 @@ async function sensorAdd({ context, scope, environment }: RouterConstructorData)
   await Resources.devices.paramSet(device_id, { key: "dev_lastcheckin", value: "-", sent: false });
   await Resources.devices.paramSet(device_id, { key: "dev_battery", value: "-", sent: false });
   await Resources.devices.paramSet(device_id, { key: "asset_address", value: (new_asset_address?.value as string) || "N/A", sent: false });
+  await Resources.devices.paramSet(device_id, { key: "image_urllink", value: "Add picture link here"});
 
   const add_to_dropdown_list = parseTagoObject({ asset_list: new_dev_name.value }, device_id);
   await Resources.devices.sendDeviceData(org_id, dev_data.concat(add_to_dropdown_list));

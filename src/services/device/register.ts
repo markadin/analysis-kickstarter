@@ -159,9 +159,11 @@ async function sensorAdd({ context, scope, environment }: RouterConstructorData)
         metadata: {
           label: new_dev_name.value,
           url,
-          status: "unknwon",
+          status: "unknown",
           type: dash_info.type,
-          location: new_asset_address?.location
+          location: new_asset_address?.location,
+          "color": "grey",
+          "icon" : "ban", 
         },
       },
     },

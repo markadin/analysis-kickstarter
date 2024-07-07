@@ -228,6 +228,25 @@ async function ioguardAdd({ context, scope, environment }: RouterConstructorData
   //Update cabinet tags
   await Resources.devices.edit(paired_asset_id, {tags: cabinet_tags});
 
+  // //Now also update the metadata of the organization and group virtual sensor used for map
+  // Find group device if(group_id)
+  // Find variable with cabinet ID: paired_asset_id
+  // Edit metadata, icon, color, status protected
+  var [{id:group_record_id, metadata:group_dev_metadata}] = await Resources.devices.getDeviceData(group_id, { variables: "dev_id", groups: paired_asset_id, qty: 1 });
+  group_dev_metadata.color = "green";
+  group_dev_metadata.icon = "padlock";
+  await Resources.devices.editDeviceData(group_id, {id:group_record_id, metadata:group_dev_metadata});
+  // Find org device: org_id
+  // Find variable with cabinet ID: paired_asset_id
+  // Edit metadata, icon, color, status protected
+  var [{id:org_record_id, metadata:org_dev_metadata}] = await Resources.devices.getDeviceData(org_id, { variables: "dev_id", groups: paired_asset_id, qty: 1 });
+  org_dev_metadata.color = "green";
+  org_dev_metadata.icon = "padlock";
+  await Resources.devices.editDeviceData(org_id, {id:org_record_id, metadata:org_dev_metadata});
+
+
+  
+
 
   const url = createDashURL(dash_id, { org_dev: org_id, sensor: device_id });
 

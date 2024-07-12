@@ -19,6 +19,7 @@ interface installDeviceParam {
   new_device_eui: string;
   type: string;
   group_id?: string;
+  asset_id?:string;
 }
 
 /**
@@ -74,7 +75,7 @@ function parseCSV(str) {
  * @param type Sensor type of the device
  * @param group_id Group id that devices will be created
  */
-async function installDevice({ new_dev_name, new_ioguard_serial, org_id, network_id, connector, new_device_eui, type, group_id}: installDeviceParam) {
+async function installDevice({ new_dev_name, new_ioguard_serial, org_id, network_id, connector, new_device_eui, type, group_id, asset_id}: installDeviceParam) {
   //data retention set to 1 month
   const device_data: DeviceCreateInfo = {
     name: new_dev_name,
@@ -97,6 +98,7 @@ async function installDevice({ new_dev_name, new_ioguard_serial, org_id, network
       { key: "device_type", value: "device" },
       { key: "sensor", value: type },
       { key: "dev_eui", value: new_device_eui },
+      { key: "asset_id", value: asset_id },
     ],
   };
 
@@ -145,7 +147,7 @@ async function ioguardAdd({ context, scope, environment }: RouterConstructorData
   const new_dev_type = scope.find((x) => x.variable === "new_dev_type");
   const new_dev_network = scope.find((x) => x.variable === "new_dev_network");
   const new_paired_asset_id = scope.find((x) => x.variable === "paired_asset_id");
-  const paired_asset_id = new_paired_asset_id?.value as string;
+  const asset_id = new_paired_asset_id?.value as string;
 
   if (!new_dev_name || !new_dev_group || !new_dev_type || !new_dev_network || !new_ioguard_serial) {
     throw new Error("Missing variables");
@@ -165,6 +167,7 @@ async function ioguardAdd({ context, scope, environment }: RouterConstructorData
   let dev_eui = (new_dev_eui?.value as string)?.toLowerCase();
   //If DevEUI was no provided in the input form, check if there is one in the csv file uploaded to Tago
   //Import serial numbers table from csv file, add csv file url as environment variable serial_csv
+  //.csv file should have a column "DevEUI", and a column with the ioguard serial numbers
   if(!dev_eui){
     const csvSerialFileUrl = environment.serial_csv;
     if (!csvSerialFileUrl) {
@@ -201,6 +204,7 @@ async function ioguardAdd({ context, scope, environment }: RouterConstructorData
   const connector_id = new_dev_type.value as string;
 
   const dash_id = await getDashboardByTagID("ioguard_dashboard");
+  const asset_dash_id = await getDashboardByTagID("cabinet_dashboard");
 
   const dash_info = await Resources.dashboards.info(dash_id);
   const type = dash_info.blueprint_devices.find((bp) => bp.conditions[0].key === "sensor");
@@ -217,29 +221,30 @@ async function ioguardAdd({ context, scope, environment }: RouterConstructorData
     new_device_eui: dev_eui,
     type: type.conditions[0].value,
     group_id,
+    asset_id,
   });
 
   //Update the paired asset (cabinet) with the ioguard info
-  const {tags: cabinet_tags} = await Resources.devices.info(paired_asset_id);
+  const {tags: cabinet_tags} = await Resources.devices.info(asset_id);
   //Add new device tago id to the cabinet tags
-  cabinet_tags.find((x) => x.key === "paired_ioguard_id").value = device_id;
+  cabinet_tags.find((x) => x.key === "ioguard_id").value = device_id;
   //Update the cabinet tag to show the sensor is installed
   cabinet_tags.find((x) => x.key === "has_ioguard").value = "true";
   //Update cabinet tags
-  await Resources.devices.edit(paired_asset_id, {tags: cabinet_tags});
+  await Resources.devices.edit(asset_id, {tags: cabinet_tags});
 
   // //Now also update the metadata of the organization and group virtual sensor used for map
   // Find group device if(group_id)
-  // Find variable with cabinet ID: paired_asset_id
+  // Find variable with cabinet ID: asset_id
   // Edit metadata, icon, color, status protected
-  var [{id:group_record_id, metadata:group_dev_metadata}] = await Resources.devices.getDeviceData(group_id, { variables: "dev_id", groups: paired_asset_id, qty: 1 });
+  var [{id:group_record_id, metadata:group_dev_metadata}] = await Resources.devices.getDeviceData(group_id, { variables: "dev_id", groups: asset_id, qty: 1 });
   group_dev_metadata.color = "green";
   group_dev_metadata.icon = "padlock";
   await Resources.devices.editDeviceData(group_id, {id:group_record_id, metadata:group_dev_metadata});
   // Find org device: org_id
-  // Find variable with cabinet ID: paired_asset_id
+  // Find variable with cabinet ID: asset_id
   // Edit metadata, icon, color, status protected
-  var [{id:org_record_id, metadata:org_dev_metadata}] = await Resources.devices.getDeviceData(org_id, { variables: "dev_id", groups: paired_asset_id, qty: 1 });
+  var [{id:org_record_id, metadata:org_dev_metadata}] = await Resources.devices.getDeviceData(org_id, { variables: "dev_id", groups: asset_id, qty: 1 });
   org_dev_metadata.color = "green";
   org_dev_metadata.icon = "padlock";
   await Resources.devices.editDeviceData(org_id, {id:org_record_id, metadata:org_dev_metadata});
@@ -249,6 +254,7 @@ async function ioguardAdd({ context, scope, environment }: RouterConstructorData
 
 
   const url = createDashURL(dash_id, { org_dev: org_id, sensor: device_id });
+ 
 
   const dev_data = parseTagoObject(
     {
@@ -257,7 +263,7 @@ async function ioguardAdd({ context, scope, environment }: RouterConstructorData
         metadata: {
           label: new_dev_name.value,
           url,
-          status: "unknwon",
+          status: "unknown",
           type: dash_info.type,
         },
       },
@@ -265,11 +271,17 @@ async function ioguardAdd({ context, scope, environment }: RouterConstructorData
     device_id
   );
 
+ 
+
+
+  
+
   await Resources.devices.paramSet(device_id, {
     key: "dashboard_url",
     value: url,
     sent: false,
   });
+
 
   await Resources.devices.paramSet(device_id, { key: "dev_eui", value: dev_eui, sent: false });
   await Resources.devices.paramSet(device_id, { key: "dev_group", value: (new_dev_group?.metadata?.label as string) || "", sent: false });

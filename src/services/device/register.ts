@@ -39,9 +39,7 @@ async function installDevice({ new_dev_name, org_id, network_id, connector, type
     network: network_id,
     serie_number: new_device_eui,
     connector,
-    type: "immutable",
-    chunk_period: "month",
-    chunk_retention: 1,
+    type: "mutable",
   };
 
   //creating new device
@@ -56,7 +54,8 @@ async function installDevice({ new_dev_name, org_id, network_id, connector, type
       { key: "dev_eui", value: new_device_eui },
       { key: "cabinet_serial", value: new_dev_name },
       { key: "has_ioguard", value: "false"},
-      { key: "paired_ioguard_id", value: "0"},
+      { key: "ioguard_id", value: "0"},
+      //{ key: "asset_id", value: new_dev.device_id}, //used for linking with sensor, device list filter, but it's enough to have one common tag > ioguard_id
     ],
   };
 
@@ -162,6 +161,7 @@ async function sensorAdd({ context, scope, environment }: RouterConstructorData)
           status: "unknown",
           type: dash_info.type,
           location: new_asset_address?.location,
+          img_pin: `https://api.tago.io/file/6609aada80bc550009b39389/eisenach/cabinets/${new_dev_name.value}.jpg`,
           "color": "grey",
           "icon" : "ban", 
         },
@@ -183,7 +183,7 @@ async function sensorAdd({ context, scope, environment }: RouterConstructorData)
   await Resources.devices.paramSet(device_id, { key: "dev_lastcheckin", value: "-", sent: false });
   await Resources.devices.paramSet(device_id, { key: "dev_battery", value: "-", sent: false });
   await Resources.devices.paramSet(device_id, { key: "asset_address", value: (new_asset_address?.value as string) || "N/A", sent: false });
-  await Resources.devices.paramSet(device_id, { key: "image_urllink", value: "Add picture link here"});
+  await Resources.devices.paramSet(device_id, { key: "image_urllink", value: `https://api.tago.io/file/6609aada80bc550009b39389/eisenach/cabinets/${new_dev_name.value}.jpg`});
 
   const add_to_dropdown_list = parseTagoObject({ asset_list: new_dev_name.value }, device_id);
   await Resources.devices.sendDeviceData(org_id, dev_data.concat(add_to_dropdown_list));

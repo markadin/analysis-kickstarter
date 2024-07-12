@@ -41,6 +41,24 @@ async function ioguardDel({ scope, environment }: RouterConstructorDevice & { sc
 
   const group_id = device_info.tags.find((tag) => tag.key === "group_id")?.value;
   const org_id = device_info.tags.find((tag) => tag.key === "organization_id")?.value;
+  const asset_id = device_info.tags.find((tag) => tag.key === "asset_id")?.value;
+
+  //Remove ioguard links from the paired asset (cabinet)
+  if(asset_id){
+    const {tags: cabinet_tags} = await Resources.devices.info(asset_id);
+    //remove device tago id from the cabinet tags
+    if(cabinet_tags){
+      const found_cabinet_ioguard_field = cabinet_tags.find((x) => x.key === "ioguard_id");
+      if(found_cabinet_ioguard_field) found_cabinet_ioguard_field.value = "0";
+
+      //Update the cabinet tag to show the sensor is not installed
+      const found_cabinet_has_ioguard_field = cabinet_tags.find((x) => x.key === "has_ioguard");
+      if(found_cabinet_has_ioguard_field) found_cabinet_has_ioguard_field.value = "false";
+      //Update cabinet tags
+      await Resources.devices.edit(asset_id, {tags: cabinet_tags});
+    }
+
+  }
 
   if (group_id) {
     await Resources.devices.deleteDeviceData(group_id, { groups: dev_id, qty: 9999 });
@@ -54,6 +72,7 @@ async function ioguardDel({ scope, environment }: RouterConstructorDevice & { sc
     await Resources.devices.deleteDeviceData(org_id, { groups: dev_id, qty: 9999 });
     await removeAggregationData(org_id);
   }
+  
   return console.debug("Device deleted!");
 }
 

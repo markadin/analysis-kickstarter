@@ -192,6 +192,27 @@ async function sensorAdd({ context, scope, environment }: RouterConstructorData)
     await Resources.devices.sendDeviceData(new_dev_group.value as string, dev_data);
   }
 
+  //Send variable to asset device itself to store its address
+  const asset_data = parseTagoObject(
+    {
+      position: {
+        value: new_asset_address?.value,
+        location: new_asset_address?.location,
+        metadata: {
+          label: new_dev_name.value,
+          status: "unknown",
+          type: dash_info.type,
+          location: new_asset_address?.location,
+          img_pin: `https://api.tago.io/file/6609aada80bc550009b39389/eisenach/cabinets/${new_dev_name.value}.jpg`,
+          "color": "black",
+          "icon" : "dot-and-circle", 
+        },
+      },
+    },
+    device_id
+  );
+  await Resources.devices.sendDeviceData(device_id, asset_data);
+
   return validate("#VAL.DEVICE_CREATED_SUCCESSFULLY#", "success");
 }
 

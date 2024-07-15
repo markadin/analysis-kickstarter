@@ -1,15 +1,14 @@
 /*
  * KickStarter Analysis
- * Handler
+ * Uplink Handler
  *
- * This analysis handles most of buttons clickable by dashboard input form widgets such as dynamic table and input form widgets.
- *
- * Handles the following actions:
- * - Add, edit and delete an Organization.
- * - Add, edit and delete a Group.
- * - Add, edit and delete a Sensor.
- * - Add, edit and delete a User.
- * - Add, edit and delete scheduled reports.
+ * This analysis handles action triggered by watched sensor variables
+ * Handles the following uplink variables:
+ * - status
+ * - temperature
+ * - humidity
+ * - location
+ * - alarm (ioguard)
  */
 
 import { Analysis, Utils } from "@tago-io/sdk";
@@ -18,6 +17,7 @@ import { Data, TagoContext } from "@tago-io/sdk/lib/types";
 import { sensorUplinkLocation } from "../services/uplinks/sensor-uplink-location";
 import { sensorUplinkStatus } from "../services/uplinks/sensor-uplink-status";
 import { sensorUplinkTempHum } from "../services/uplinks/sensor-uplink-temp-hum";
+import { sensorUplinkAlarm } from "../services/uplinks/sensor-uplink-alarm";
 
 /**
  *
@@ -40,9 +40,9 @@ async function startAnalysis(context: TagoContext, scope: Data[]): Promise<void>
     return context.log('Invalid "config_id" in the environment variable');
   }
 
-  // Just a little hack to set the device_list_button_id that come sfrom the scope
+  // Just a little hack to set the device_list_button_id that comes from the scope
   // and set it to the environment variables instead. It makes easier to use router function later.
-  environment._input_id = (scope as any).find((x: any) => x.device_list_button_id)?.device_list_button_id;
+  environment._input_id = (scope as any).find((x: any) => x.device_list_button_id)?.device_list_button_id; //this is probably not needed in uplink handler, only in regular handler
 
   // The router class will help you route the function the analysis must run
   // based on what had been received in the analysis.
@@ -52,6 +52,7 @@ async function startAnalysis(context: TagoContext, scope: Data[]): Promise<void>
   router.register(sensorUplinkLocation).whenVariables(["location"]);
   router.register(sensorUplinkStatus).whenVariables(["status", "water_leakage_detected"]);
   router.register(sensorUplinkTempHum).whenVariables(["temperature", "relative_humidity"]);
+  router.register(sensorUplinkAlarm).whenVariables(["alarm"]);
 
   await router.exec();
 }

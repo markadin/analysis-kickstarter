@@ -213,6 +213,27 @@ async function sensorAdd({ context, scope, environment }: RouterConstructorData)
   );
   await Resources.devices.sendDeviceData(device_id, asset_data);
 
+  //Initialize locked status 
+  const asset_unlocked = parseTagoObject(
+    {
+      asset_unlocked: {
+        value: false,
+      },
+    },
+    device_id
+  );
+  await Resources.devices.sendDeviceData(device_id, asset_unlocked);
+  //Initialize service status 
+  const service_active = parseTagoObject(
+    {
+      service_active: {
+        value: false,
+      },
+    },
+    device_id
+  );
+  await Resources.devices.sendDeviceData(device_id, service_active);
+
   return validate("#VAL.DEVICE_CREATED_SUCCESSFULLY#", "success");
 }
 

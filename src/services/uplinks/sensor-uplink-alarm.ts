@@ -1,4 +1,5 @@
 import { Resources } from "@tago-io/sdk";
+import { parseTagoObject } from "../../lib/data.logic";
 
 import { RouterConstructorData } from "../../types";
 
@@ -37,7 +38,7 @@ async function sensorUplinkAlarm({ context, scope, environment }: RouterConstruc
     throw new Error("Missing Sensor status");
   }
 
-  //find out if the alarm comes from the ioguard sensor (level 1), or from the asset, cabinet (level 2)
+  //find out if the alarm comes from the ioguard sensor, or from the copy in the asset
   const sensor_type = sensor_info.tags.find((x) => x.key === "sensor")?.value;
   if (sensor_type != "ioguard" && sensor_type != "cabinet") {
     throw new Error("Alarm came from an unknown source - not ioguard nor cabinet");
@@ -45,12 +46,121 @@ async function sensorUplinkAlarm({ context, scope, environment }: RouterConstruc
 
   let current_sensor_info;
 
+  //Process the iouguard alarm 
   if (sensor_type === "ioguard"){
     const asset_id = sensor_info.tags.find((x) => x.key === "asset_id")?.value;
     if (!asset_id) {
       throw new Error("Paired asset not found in system");
     }
-    await Resources.devices.sendDeviceData(asset_id,sensor_alarm);
+
+    const asset_info = await Resources.devices.info(asset_id);
+
+    const group_id = asset_info.tags.find((x) => x.key === "group_id")?.value;
+
+    if (!group_id) {
+      throw new Error("Asset is not assigned to any group");
+    } //"Skipped. No group addressed to the sensor."
+
+    const layers = await Resources.devices.getDeviceData(group_id, { variables: "layers", qty: 9999 });
+
+    const [dev_id] = await Resources.devices.getDeviceData(group_id, { variables: "dev_id", groups: asset_id, qty: 1 });
+    if (!dev_id.metadata) {
+      throw new Error("dev_id.metadata not found in Tago");
+    }
+  
+    // const fixed_position_key = `${group_id}${asset_id}`;
+    // const layer = layers.find((x) => (x?.metadata?.fixed_position as any)[fixed_position_key]);
+    // if (!layer) {
+    //   console.log("device still has no pin");
+    //   return;
+    // } //"Device has no pin in layer yet."
+
+                                                                                                    
+
+    //Check if the asset is asset_unlocked and service_active exist
+    let [asset_unlocked] = await Resources.devices.getDeviceData(asset_id, { variables: "asset_unlocked", qty: 1 });
+    let [service_active] = await Resources.devices.getDeviceData(asset_id, { variables: "service_active", qty: 1 });
+    
+    //Create variables if missing (this will be considered unlocked,service = false)
+    if(!asset_unlocked){
+    //Initialize locked status 
+      const asset_unlocked = parseTagoObject(
+        {
+          asset_unlocked: {
+            value: false,
+          },
+        },
+        asset_id
+      );
+      console.log("asset_unlocked initialized");
+      await Resources.devices.sendDeviceData(asset_id, asset_unlocked);
+    }
+
+    if(!service_active){
+      //Initialize locked status 
+        const service_active = parseTagoObject(
+          {
+            service_active: {
+              value: false,
+            },
+          },
+          asset_id
+        );
+        console.log("service_active initialized");
+        await Resources.devices.sendDeviceData(asset_id, service_active); 
+      }
+
+                                                            //await Resources.devices.editDeviceData(asset_id, {id:asset_unlocked.id, value:"true"});
+      //cabinet unlocked
+      if(asset_unlocked?.value){
+        if(service_active?.value){
+          console.log("service already active, ignore the alarm");
+        }
+        else{
+          //set service to active
+          await Resources.devices.editDeviceData(asset_id, {id:service_active.id, value:true});
+          //save the event
+          const create_service_event = parseTagoObject(
+            {
+              service_event: {
+                value: "Service started",
+              },
+            },
+            asset_id
+          );
+          await Resources.devices.sendDeviceData(asset_id, create_service_event);
+          //prepare the color and icon metadata
+          current_sensor_info = { icon: "open-wrench-tool-silhouette", color: "orange" };
+        }
+      }
+      else{
+        console.log("unlocked is false");
+      }
+
+
+
+
+
+
+
+
+
+
+      //await Resources.devices.sendDeviceData(asset_id,sensor_alarm);
+
+
+
+      if (!current_sensor_info) {
+        return;
+      } //"Different uplink message";
+
+      //update pin icon and color
+      dev_id.metadata.color = current_sensor_info.color;
+      dev_id.metadata.icon = current_sensor_info.icon;
+
+      await Resources.devices.editDeviceData(group_id, { ...dev_id, metadata: dev_id.metadata });
+
+      // await updateStatusHistory(sensor_id, current_sensor_info);
   }
 
   // if (sensor_alarm.value === "1" || sensor_alarm.value === 1 || sensor_alarm.value === "true") {
@@ -65,28 +175,7 @@ async function sensorUplinkAlarm({ context, scope, environment }: RouterConstruc
 
   // await updateStatusHistory(sensor_id, current_sensor_info);
 
-  // const group_id = sensor_info.tags.find((x) => x.key === "group_id")?.value;
 
-  // if (!group_id) {
-  //   return;
-  // } //"Skipped. No group addressed to the sensor."
-
-  // const layers = await Resources.devices.getDeviceData(group_id, { variables: "layers", qty: 9999 });
-
-  // const [dev_id] = await Resources.devices.getDeviceData(group_id, { variables: "dev_id", groups: sensor_id, qty: 1 });
-  // if (!dev_id.metadata) {
-  //   throw new Error("dev_id.metadata not found in Tago");
-  // }
-  // const fixed_position_key = `${group_id}${sensor_id}`;
-  // const layer = layers.find((x) => (x?.metadata?.fixed_position as any)[fixed_position_key]);
-  // if (!layer) {
-  //   return;
-  // } //"Device has no pin in layer yet."
-
-  // dev_id.metadata.color = current_sensor_info.color;
-  // dev_id.metadata.icon = current_sensor_info.icon;
-
-  // await Resources.devices.editDeviceData(group_id, { ...dev_id, metadata: dev_id.metadata });
 }
 
 export { sensorUplinkAlarm };

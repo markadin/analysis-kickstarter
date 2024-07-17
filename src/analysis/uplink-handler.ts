@@ -27,11 +27,11 @@ import { sensorUplinkAlarm } from "../services/uplinks/sensor-uplink-alarm";
  */
 async function startAnalysis(context: TagoContext, scope: Data[]): Promise<void> {
   context.log("Running Analysis");
-  console.log("Scope:", scope);
+  //console.log("Scope:", scope);
 
   // Convert environment variables to a JSON.
   const environment = Utils.envToJson(context.environment);
-  console.log("Environment:", environment);
+  //console.log("Environment:", environment);
 
   // Check if all tokens needed for the application were provided.
   if (!environment.config_id) {

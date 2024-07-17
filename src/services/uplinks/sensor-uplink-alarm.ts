@@ -46,7 +46,9 @@ async function sensorUplinkAlarm({ context, scope, environment }: RouterConstruc
 
   let current_sensor_info;
 
-  //Process the iouguard alarm 
+  ///////////////////////////////
+  //Process the iouguard alarm //
+  ///////////////////////////////
   if (sensor_type === "ioguard"){
     const asset_id = sensor_info.tags.find((x) => x.key === "asset_id")?.value;
     if (!asset_id) {
@@ -77,72 +79,39 @@ async function sensorUplinkAlarm({ context, scope, environment }: RouterConstruc
 
                                                                                                     
 
-    //Check if the asset is asset_unlocked and service_active exist
+    //Check if the asset_unlocked and service_active exist
     let [asset_unlocked] = await Resources.devices.getDeviceData(asset_id, { variables: "asset_unlocked", qty: 1 });
     let [service_active] = await Resources.devices.getDeviceData(asset_id, { variables: "service_active", qty: 1 });
     
-    //Create variables if missing (this will be considered unlocked,service = false)
-    if(!asset_unlocked){
-    //Initialize locked status 
-      const asset_unlocked = parseTagoObject(
-        {
-          asset_unlocked: {
-            value: false,
-          },
-        },
-        asset_id
-      );
-      console.log("asset_unlocked initialized");
-      await Resources.devices.sendDeviceData(asset_id, asset_unlocked);
-    }
 
-    if(!service_active){
-      //Initialize locked status 
-        const service_active = parseTagoObject(
-          {
-            service_active: {
-              value: false,
-            },
-          },
-          asset_id
-        );
-        console.log("service_active initialized");
-        await Resources.devices.sendDeviceData(asset_id, service_active); 
-      }
-
-                                                            //await Resources.devices.editDeviceData(asset_id, {id:asset_unlocked.id, value:"true"});
-      //cabinet unlocked
-      if(asset_unlocked?.value){
-        if(service_active?.value){
-          console.log("service already active, ignore the alarm");
-        }
-        else{
-          //set service to active
-          await Resources.devices.editDeviceData(asset_id, {id:service_active.id, value:true});
-          //save the event
-          const create_service_event = parseTagoObject(
-            {
-              service_event: {
-                value: "Service started",
-              },
-            },
-            asset_id
-          );
-          await Resources.devices.sendDeviceData(asset_id, create_service_event);
-          //prepare the color and icon metadata
+    //cabinet unlocked
+    if(asset_unlocked?.value){
+      
+      //if service_active variable doesn't exist yet, or service_active == false, initialize/set to true
+      if(!service_active || !service_active.value){
+          if(!service_active){
+            //create service_active variable in the asset bucket
+            await Resources.devices.sendDeviceData(asset_id, {variable: "service_active", value:true}); 
+          }
+          else{
+            //set service_active to active 
+            await Resources.devices.editDeviceData(asset_id, {id:service_active.id, value:true});
+          }
+          
+          //log the event to the asset bucket
+          await Resources.devices.sendDeviceData(asset_id, {variable:"event",value: "Service detected"});
+          //update the icon and color
           current_sensor_info = { icon: "open-wrench-tool-silhouette", color: "orange" };
-        }
+          console.log("service started");
       }
       else{
-        console.log("unlocked is false");
+        //service was already active
+        console.log("service already active, ignore the alarm");
       }
-
-
-
-
-
-
-
+    }
+    else{
+      console.log("unlocked is false");
+    }
 
 
 
@@ -152,7 +121,7 @@ async function sensorUplinkAlarm({ context, scope, environment }: RouterConstruc
 
       if (!current_sensor_info) {
         return;
-      } //"Different uplink message";
+      } //nothing to update on the icon
 
       //update pin icon and color
       dev_id.metadata.color = current_sensor_info.color;

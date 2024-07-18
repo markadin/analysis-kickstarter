@@ -42,6 +42,7 @@ async function ioguardDel({ scope, environment }: RouterConstructorDevice & { sc
   const group_id = device_info.tags.find((tag) => tag.key === "group_id")?.value;
   const org_id = device_info.tags.find((tag) => tag.key === "organization_id")?.value;
   const asset_id = device_info.tags.find((tag) => tag.key === "asset_id")?.value;
+  const ioguard_serial = device_info.tags.find((tag) => tag.key === "ioguard_serial")?.value;
 
   //Remove ioguard links from the paired asset (cabinet)
   if(asset_id){
@@ -56,6 +57,8 @@ async function ioguardDel({ scope, environment }: RouterConstructorDevice & { sc
       if(found_cabinet_has_ioguard_field) found_cabinet_has_ioguard_field.value = "false";
       //Update cabinet tags
       await Resources.devices.edit(asset_id, {tags: cabinet_tags});
+      //Log ioguard removal to the asset:
+      await Resources.devices.sendDeviceData(asset_id, {variable:"event",value: "IOguard sensor " + ioguard_serial + " unpaired from cabinet"});
     }
 
   }

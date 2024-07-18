@@ -232,6 +232,9 @@ async function ioguardAdd({ context, scope, environment }: RouterConstructorData
   cabinet_tags.find((x) => x.key === "has_ioguard").value = "true";
   //Update cabinet tags
   await Resources.devices.edit(asset_id, {tags: cabinet_tags});
+  //Log event: sensor installed
+  await Resources.devices.sendDeviceData(asset_id, {variable:"event",value: "IOguard sensor " + new_ioguard_serial.value + " paired"});
+
 
   // //Now also update the metadata of the organization and group virtual sensor used for map
   // Find group device if(group_id)

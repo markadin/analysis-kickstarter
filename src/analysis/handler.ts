@@ -38,6 +38,7 @@ import { ioguardEdit } from "../services/ioguard/edit";
 import { ioguardPlacement } from "../services/ioguard/place-sensor";
 import { ioguardAdd } from "../services/ioguard/register";
 import { ioguardDel } from "../services/ioguard/remove";
+import { sensorLockControl } from "../services/device/lock-control";
 
 // import { createAlert } from "../services/alerts/register";
 // import { deleteAlert } from "../services/alerts/remove";
@@ -79,6 +80,7 @@ async function startAnalysis(context: TagoContext, scope: Data[]): Promise<void>
   router.register(sensorAdd).whenInputFormID("create-dev");
   router.register(sensorDel).whenDeviceListIdentifier("delete-dev");
   router.register(sensorEdit).whenDeviceListIdentifier("edit-dev");
+  router.register(sensorLockControl).whenInputFormID("lock-asset");
 
   // Sensor uplink routing
   router.register(sensorPlacement).whenVariables(["set_dev_pin_id"]);

@@ -217,7 +217,7 @@ async function sensorAdd({ context, scope, environment }: RouterConstructorData)
   const asset_unlocked = parseTagoObject(
     {
       asset_unlocked: {
-        value: false,
+        value: true,
       },
     },
     device_id

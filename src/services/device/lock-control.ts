@@ -27,6 +27,7 @@ async function validateParams({ scope, environment }: RouterConstructorDevice) {
  */
 async function sensorLockControl({ scope, environment }: RouterConstructorDevice) {
   console.log("Change lock status");
+  let current_sensor_info; //used to store the map pin metadata
 
   await validateParams({ scope, environment });
   const asset_id = (scope[0] as any).device;
@@ -86,15 +87,48 @@ async function sensorLockControl({ scope, environment }: RouterConstructorDevice
     //also clear the ioguard device alarm
     await Resources.devices.sendDeviceData(ioguard_id, {variable:"alarm",value:send_zero.toString(2).padStart(8, '0')});
     console.log("alarm cleared");
+
+    //and prepare data to update the pin on the map
+    current_sensor_info = { icon: "padlock", color: "green" };
+
   }
 
+  //update the unlocked status
   asset_unlocked.value =  new_asset_unlocked.value;
   await Resources.devices.editDeviceData(asset_id, {id:asset_unlocked.id, value:asset_unlocked.value});
+  
+  if(asset_unlocked.value){//asset unlocked, update the icon
+    current_sensor_info = { icon: "open-padlock-silhouette"}; //don't update the color, keep the alarm status
+  }
 
-  //unlock command received
+  //if locked, delete teh service_active flag
   if(!asset_unlocked.value){
     await Resources.devices.editDeviceData(asset_id, {id:service_active.id, value:false});
+    if(!current_sensor_info){ //if not already updated in the clear alarm block, then just update the icon, keep the alarm color
+      current_sensor_info = { icon: "padlock"};
+    }
   }
+
+  //Now take care of the pin on the group map;
+  //find in which group is the asset
+  const asset_info = await Resources.devices.info(asset_id);
+  const group_id = asset_info.tags.find((x) => x.key === "group_id")?.value;
+  if (!group_id) {
+    throw new Error("Asset is not assigned to any group");
+  } //"Skipped. No group addressed to the sensor."
+
+  //find the object which represents the asset in the group device
+  const [dev_id] = await Resources.devices.getDeviceData(group_id, { variables: "dev_id", groups: asset_id, qty: 1 });
+
+  if (current_sensor_info && dev_id.metadata) {
+    //update pin icon and color (if present)
+    if(current_sensor_info.color){
+      dev_id.metadata.color = current_sensor_info.color;
+    }
+    dev_id.metadata.icon = current_sensor_info.icon;
+
+    await Resources.devices.editDeviceData(group_id, { ...dev_id, metadata: dev_id.metadata });
+  } 
 
 
 

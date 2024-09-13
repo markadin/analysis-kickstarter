@@ -255,6 +255,24 @@ async function ioguardAdd({ context, scope, environment }: RouterConstructorData
   org_dev_metadata.icon = "padlock";
   await Resources.devices.editDeviceData(org_id, {id:org_record_id, metadata:org_dev_metadata});
 
+  //also update the dev_id_hidden variable, used for filtering in the map widget
+  const [dev_id_hidden] = await Resources.devices.getDeviceData(group_id, { variables: "dev_id_hidden", groups: asset_id, qty: 1 });
+  if (!dev_id_hidden) {
+    //if not already existing, create in parallel a paired variable used for filtering in the map widget
+    const dev_data_hidden = parseTagoObject(
+      {
+        dev_id_hidden: {
+          value: org_dev_metadata.color, //initialize with the same value as in the dev_id metadata
+        },
+      },
+      asset_id //same group as the dev_id variable
+    );
+    await Resources.devices.sendDeviceData(group_id, dev_data_hidden);
+  }
+  else{
+    await Resources.devices.editDeviceData(group_id, {id:dev_id_hidden.id, value:org_dev_metadata.color});
+  }
+
 
   
 

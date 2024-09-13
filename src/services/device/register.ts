@@ -170,6 +170,16 @@ async function sensorAdd({ context, scope, environment }: RouterConstructorData)
     device_id
   );
 
+  //create in parallel a variable that will be used for filtering in the map widget, it will have the same group field as the paired device
+  const dev_data_hidden = parseTagoObject(
+    {
+      dev_id_hidden: {
+        value: "grey", //initialize with the same value as in the dev_id metadata
+      },
+    },
+    device_id //same group as the dev_id variable
+  );
+
   
 
   await Resources.devices.paramSet(device_id, {
@@ -189,7 +199,10 @@ async function sensorAdd({ context, scope, environment }: RouterConstructorData)
   await Resources.devices.sendDeviceData(org_id, dev_data.concat(add_to_dropdown_list));
 
   if (group_id) {
+    //add device to the group device, as dev_id variable, with the value equal to tago new device_id, location and metadata
     await Resources.devices.sendDeviceData(new_dev_group.value as string, dev_data);
+    //create in parallel a paired variable used for filtering in the map widget
+    await Resources.devices.sendDeviceData(new_dev_group.value as string, dev_data_hidden);
   }
 
   //Send variable to asset device itself to store its address

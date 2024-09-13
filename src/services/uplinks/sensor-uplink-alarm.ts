@@ -72,6 +72,20 @@ async function sensorUplinkAlarm({ context, scope, environment }: RouterConstruc
     if (!dev_id.metadata) {
       throw new Error("dev_id.metadata not found in Tago");
     }
+    //object which represents the corresponding paired variable used for filtering in the map widget
+    const [dev_id_hidden] = await Resources.devices.getDeviceData(group_id, { variables: "dev_id_hidden", groups: asset_id, qty: 1 });
+    if (!dev_id_hidden) {
+      //if not already existing, create in parallel a paired variable used for filtering in the map widget
+      const dev_data_hidden = parseTagoObject(
+        {
+          dev_id_hidden: {
+            value: "grey", //initialize with the same value as in the dev_id metadata
+          },
+        },
+        dev_id.group //same group as the dev_id variable
+      );
+      await Resources.devices.sendDeviceData(group_id, dev_data_hidden);
+    }
   
     // const fixed_position_key = `${group_id}${asset_id}`;
     // const layer = layers.find((x) => (x?.metadata?.fixed_position as any)[fixed_position_key]);
@@ -174,6 +188,8 @@ async function sensorUplinkAlarm({ context, scope, environment }: RouterConstruc
       dev_id.metadata.icon = current_sensor_info.icon;
 
       await Resources.devices.editDeviceData(group_id, { ...dev_id, metadata: dev_id.metadata });
+      //also update the paired variable dev_id_hidden used for filtering in the map widget.
+      await Resources.devices.editDeviceData(group_id, {id:dev_id_hidden.id, value:current_sensor_info.color});
 
       // await updateStatusHistory(sensor_id, current_sensor_info);
   }
